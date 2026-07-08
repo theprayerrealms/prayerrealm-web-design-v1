@@ -109,7 +109,7 @@ const Admin = () => {
                 snap('events'),
                 snap('testimonies', orderBy('createdAt', 'desc')),
                 snap('prayers', orderBy('createdAt', 'desc')),
-                snap('attendance'),
+                snap('attendances'),
             ]);
 
             setRegistrations(regs);

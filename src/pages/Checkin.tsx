@@ -14,6 +14,8 @@ import {
     query,
     where,
     getDocs,
+    updateDoc,
+    increment,
 } from 'firebase/firestore';
 
 const Checkin = () => {
@@ -55,7 +57,7 @@ const Checkin = () => {
 
             // Check if already checked in (uid + eventId combo)
             const existingQ = query(
-                collection(db, 'attendance'),
+                collection(db, 'attendances'),
                 where('uid', '==', uid),
                 where('eventId', '==', eId)
             );
@@ -68,26 +70,68 @@ const Checkin = () => {
                 return;
             }
 
-            // If no phone provided yet, ask for it
-            if (!phoneNumber) {
+            // Get user phone number from attendee_users if not provided in arguments
+            let finalPhone = phoneNumber;
+            if (!finalPhone) {
+                const userRef = doc(db, 'attendee_users', uid);
+                const userSnap = await getDoc(userRef);
+                if (userSnap.exists()) {
+                    finalPhone = userSnap.data()?.phone || '';
+                }
+            }
+
+            // If no phone provided and not in user profile, ask for it
+            if (!finalPhone) {
                 setUserData({ uid, email, name });
                 setStep('PHONE');
                 toast.info('Almost there! Just need your phone number.');
                 return;
             }
 
+            // Save/update user profile in attendee_users
+            const userRef = doc(db, 'attendee_users', uid);
+            const userSnap = await getDoc(userRef);
+            if (userSnap.exists()) {
+                const existingData = userSnap.data();
+                if (!existingData.phone && finalPhone) {
+                    await setDoc(userRef, {
+                        phone: finalPhone,
+                        updatedAt: new Date().toISOString()
+                    }, { merge: true });
+                }
+            } else {
+                await setDoc(userRef, {
+                    uid,
+                    email,
+                    name,
+                    phone: finalPhone,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                });
+            }
+
             // Write attendance record
             const docId = `${eId}_${uid}`;
-            await setDoc(doc(db, 'attendance', docId), {
+            await setDoc(doc(db, 'attendances', docId), {
                 uid,
                 email,
                 name,
-                phone: phoneNumber,
+                phone: finalPhone,
                 eventId: eId,
                 eventName: eventData?.title || 'Unknown Event',
                 wrestleVersion: eventData?.wrestleVersion || 'Unknown',
                 timeCheckedIn: new Date().toISOString(),
             });
+
+            // Increment the check-in count for the event
+            try {
+                const eventRef = doc(db, 'events', eId);
+                await updateDoc(eventRef, {
+                    checkInCount: increment(1)
+                });
+            } catch (err) {
+                console.error("Failed to increment event check-in count:", err);
+            }
 
             setStep('SUCCESS');
             toast.success('Checked in successfully! God bless you 🙏');
