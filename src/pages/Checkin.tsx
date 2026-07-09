@@ -50,6 +50,16 @@ const Checkin = () => {
         fetchEvent();
     }, [eventId]);
 
+    useEffect(() => {
+        let timeoutId: NodeJS.Timeout;
+        if (step === 'SUCCESS') {
+            timeoutId = setTimeout(() => {
+                window.location.href = 'https://whatsapp.com/channel/0029VaePokfKWEKyglGOT51j';
+            }, 5000);
+        }
+        return () => clearTimeout(timeoutId);
+    }, [step]);
+
     const performCheckIn = async (uid: string, email: string, name: string, phoneNumber?: string) => {
         setLoading(true);
         try {
@@ -290,7 +300,7 @@ const Checkin = () => {
                         
                         <div className="pt-4 border-t border-white/10">
                             <p className="text-xs text-white/60 mb-4 font-bold uppercase tracking-widest">
-                                Next Step
+                                Redirecting to WhatsApp in 5s...
                             </p>
                             <Button
                                 onClick={() => window.open('https://whatsapp.com/channel/0029VaePokfKWEKyglGOT51j', '_blank')}
